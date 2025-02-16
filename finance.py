@@ -20,13 +20,16 @@ class FinanceManager:
         except ValueError:
             print("Oops! Please enter a valid number.")
 
-    def set_budget(self):
-        try:
-            budget = float(input("How much do you want to allocate as your monthly budget? "))
+     def set_budget(self):
+    try:
+        budget = float(input("How much do you want to allocate as your monthly budget? "))
+        if budget > self.data["income"]:
+            print("Error: Your budget cannot exceed your monthly income.")
+        else:
             self.data["budget"] = budget
             print(f"Your budget of {budget} has been successfully saved.")
-        except ValueError:
-            print("Oops! Please enter a valid number.")
+    except ValueError:
+        print("Oops! Please enter a valid number.")
 
     def set_savings_goal(self):
         try:
