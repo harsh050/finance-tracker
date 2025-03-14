@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <!-- Financial Overview -->
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Financial Overview</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-muted">Total Income</div>
+                        <div class="amount text-success">{{ total_income }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-muted">Total Expenses</div>
+                        <div class="amount text-danger">{{ total_expenses }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-muted">Total Investments</div>
+                        <div class="amount text-primary">{{ total_investments }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-muted">Current Savings</div>
+                        <div class="amount text-info">{{ savings }}</div>
+                    </div>
+                </div>
+                {% if savings_target %}
+                <div class="mt-3">
+                    <div class="text-muted">Savings Goal</div>
+                    <div class="amount text-warning">{{ savings_target }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Expenses</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_expenses %}
+                <div class="list-group">
+                    {% for expense, amount in recent_expenses %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">{{ expense.category }}</h6>
+                                <small class="text-muted">{{ expense.description }}</small>
+                            </div>
+                            <span class="text-danger">{{ amount }}</span>
+                        </div>
+                        <small class="text-muted">{{ expense.date }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No recent expenses</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Investments</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_investments %}
+                <div class="list-group">
+                    {% for investment, amount in recent_investments %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">{{ investment.type }}</h6>
+                            </div>
+                            <span class="text-primary">{{ amount }}</span>
+                        </div>
+                        <small class="text-muted">{{ investment.date }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No recent investments</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not has_income %}
+<div class="alert alert-warning mt-4">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    Please <a href="{{ url_for('set_income') }}" class="alert-link">set your income</a> to start tracking your finances.
+</div>
+{% endif %}
+{% endblock %} 
