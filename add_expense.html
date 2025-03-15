@@ -1,27 +1,32 @@
 {% extends "base.html" %}
 
+{% block title %}Add Expense{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
         <div class="card">
-            <div class="card-header">
-                <h4 class="mb-0">Add Expense</h4>
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">Add Expense</h5>
             </div>
             <div class="card-body">
                 <form method="POST">
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₹</span>
+                            <input type="number" class="form-control" id="amount" name="amount" step="0.01" min="0" required>
+                        </div>
+                    </div>
                     <div class="mb-3">
                         <label for="category" class="form-label">Category</label>
                         <input type="text" class="form-control" id="category" name="category" required>
                     </div>
                     <div class="mb-3">
-                        <label for="amount" class="form-label">Amount (₹)</label>
-                        <input type="number" step="0.01" min="0" class="form-control" id="amount" name="amount" required>
-                    </div>
-                    <div class="mb-3">
                         <label for="description" class="form-label">Description</label>
                         <textarea class="form-control" id="description" name="description" rows="3"></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary">Add Expense</button>
+                    <button type="submit" class="btn btn-danger">Add Expense</button>
                 </form>
             </div>
         </div>
