@@ -1,26 +1,44 @@
 {% extends "base.html" %}
 
+{% block title %}Set Savings Goal{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
         <div class="card">
-            <div class="card-header">
-                <h4 class="mb-0">Set Savings Goal</h4>
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Set Savings Goal</h5>
             </div>
             <div class="card-body">
                 <form method="POST">
                     <div class="mb-3">
-                        <label for="amount" class="form-label">Target Amount (₹)</label>
-                        <input type="number" step="0.01" min="0" class="form-control" id="amount" name="amount" required>
+                        <label for="amount" class="form-label">Target Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₹</span>
+                            <input type="number" class="form-control" id="amount" name="amount" step="0.01" min="0" required>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="target_date" class="form-label">Target Date</label>
                         <input type="date" class="form-control" id="target_date" name="target_date" required>
                     </div>
-                    <button type="submit" class="btn btn-primary">Set Goal</button>
+                    <button type="submit" class="btn btn-info">Set Goal</button>
                 </form>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Set min date to today and max date to 5 years from today
+    const today = new Date().toISOString().split('T')[0];
+    const maxDate = new Date();
+    maxDate.setFullYear(maxDate.getFullYear() + 5);
+    const maxDateStr = maxDate.toISOString().split('T')[0];
+    
+    document.getElementById('target_date').min = today;
+    document.getElementById('target_date').max = maxDateStr;
+</script>
 {% endblock %} 
