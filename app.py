@@ -435,6 +435,18 @@ def date_validation_error(error):
     flash(str(error), "error")
     return redirect(url_for('index'))
 
+
 if __name__ == '__main__':
-    init_db()
-    app.run(debug=True, port=8004)
+    # Try ports in sequence until one works
+    ports = [8000, 8001, 8002, 8003, 8004, 8005]
+    
+    for port in ports:
+        try:
+            app.run(debug=True, port=port)
+            break
+        except OSError as e:
+            if port == ports[-1]:
+                print(f"Could not find an available port in range {ports[0]}-{ports[-1]}")
+                raise e
+            print(f"Port {port} is in use, trying next port...")
+            continue
