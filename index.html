@@ -173,4 +173,21 @@
         </div>
     </div>
 </div>
+
+<!-- Clear All Data Button -->
+<div class="row mt-4 mb-4">
+    <div class="col-12 text-center">
+        <form method="POST" action="{{ url_for('clear_all') }}" onsubmit="return confirm('Warning: This will delete ALL your financial data including income, expenses, investments, budgets, and savings goals. This action cannot be undone. Are you sure you want to proceed?');">
+            <button type="submit" class="btn btn-danger">
+                <i class="fas fa-trash-alt me-2"></i>Clear All Data
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Existing scripts (if any)
+</script>
 {% endblock %} 
