@@ -46,10 +46,14 @@ class DateValidationError(Exception):
     pass
 
 def get_db():
-    """Get database connection."""
-    db = sqlite3.connect(DATABASE)
-    db.row_factory = sqlite3.Row
-    return db
+    """Get database connection with improved error handling."""
+    try:
+        db = sqlite3.connect(DATABASE)
+        db.row_factory = sqlite3.Row
+        return db
+    except Exception as e:
+        logger.error(f"Failed to connect to database: {str(e)}")
+        raise DatabaseError("Failed to connect to database")
 
 def init_db():
     """Initialize database tables."""
@@ -115,51 +119,123 @@ def check_income_set() -> float:
         db.close()
 
 def handle_database_error(f):
-    """Decorator to handle database errors."""
+    """Decorator to handle database errors with improved error handling."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         try:
             return f(*args, **kwargs)
-        except Exception as e:
+        except ValidationError as e:
+            logger.warning(f"Validation error in {f.__name__}: {str(e)}")
+            flash(str(e), "warning")
+            return render_template('error.html', error=str(e)), 400
+        except InsufficientFundsError as e:
+            logger.warning(f"Insufficient funds error in {f.__name__}: {str(e)}")
+            flash(str(e), "warning")
+            return render_template('error.html', error=str(e)), 400
+        except DatabaseError as e:
             logger.error(f"Database error in {f.__name__}: {str(e)}")
-            flash(str(e), "error")
-            return redirect(url_for('index'))
+            flash("A database error occurred. Please try again.", "error")
+            return render_template('error.html', error="Database error occurred"), 500
+        except Exception as e:
+            logger.error(f"Unexpected error in {f.__name__}: {str(e)}")
+            flash("An unexpected error occurred. Please try again.", "error")
+            return render_template('error.html', error="Unexpected error occurred"), 500
     return decorated_function
 
 # Routes with improved error handling
 @app.route('/')
+def home():
+    """Home route that renders dashboard directly instead of redirecting."""
+    return redirect(url_for('dashboard'))
+
+@app.route('/dashboard')
 @handle_database_error
-def index():
-    db = get_db()
+def dashboard():
+    """Main dashboard view with improved error handling."""
+    db = None
     try:
-        # Get latest income
+        db = get_db()
+        
+        # Get latest income with proper error handling
         income = db.execute('SELECT amount FROM income ORDER BY date DESC LIMIT 1').fetchone()
         total_income = income[0] if income else 0
 
-        # Get total expenses
-        expenses = db.execute('SELECT COALESCE(SUM(amount), 0) FROM expenses').fetchone()[0]
+        # Get total expenses with error handling
+        try:
+            expenses = db.execute('SELECT COALESCE(SUM(amount), 0) FROM expenses').fetchone()[0]
+        except Exception as e:
+            logger.error(f"Error fetching expenses: {str(e)}")
+            expenses = 0
 
-        # Get total investments
-        investments = db.execute('SELECT COALESCE(SUM(amount), 0) FROM investments').fetchone()[0]
+        # Get total investments with error handling
+        try:
+            investments = db.execute('SELECT COALESCE(SUM(amount), 0) FROM investments').fetchone()[0]
+        except Exception as e:
+            logger.error(f"Error fetching investments: {str(e)}")
+            investments = 0
 
-        # Get savings goal
-        savings_goal = db.execute('SELECT amount FROM savings_goals ORDER BY date DESC LIMIT 1').fetchone()
-        savings_target = savings_goal[0] if savings_goal else 0
+        # Get savings goal with error handling
+        try:
+            savings_goal = db.execute('SELECT amount FROM savings_goals ORDER BY date DESC LIMIT 1').fetchone()
+            savings_target = savings_goal[0] if savings_goal else 0
+        except Exception as e:
+            logger.error(f"Error fetching savings goal: {str(e)}")
+            savings_target = 0
 
         # Calculate savings
         savings = total_income - expenses
 
-        # Get recent transactions
-        recent_expenses = db.execute('''
-            SELECT amount, category, description, date 
-            FROM expenses 
-            ORDER BY date DESC LIMIT 5
-        ''').fetchall()
-        recent_investments = db.execute('''
-            SELECT amount, type, date 
-            FROM investments 
-            ORDER BY date DESC LIMIT 5
-        ''').fetchall()
+        # Get recent transactions with error handling
+        try:
+            recent_expenses = db.execute('''
+                SELECT amount, category, description, date 
+                FROM expenses 
+                ORDER BY date DESC LIMIT 5
+            ''').fetchall()
+        except Exception as e:
+            logger.error(f"Error fetching recent expenses: {str(e)}")
+            recent_expenses = []
+
+        try:
+            recent_investments = db.execute('''
+                SELECT amount, type, date 
+                FROM investments 
+                ORDER BY date DESC LIMIT 5
+            ''').fetchall()
+        except Exception as e:
+            logger.error(f"Error fetching recent investments: {str(e)}")
+            recent_investments = []
+
+        # Get budget overview with error handling
+        try:
+            budgets = db.execute('''
+                SELECT category, amount 
+                FROM budget 
+                ORDER BY category
+            ''').fetchall()
+            
+            budget_data = []
+            for budget in budgets:
+                try:
+                    spent = db.execute('''
+                        SELECT COALESCE(SUM(amount), 0) 
+                        FROM expenses 
+                        WHERE category = ?
+                    ''', (budget['category'],)).fetchone()[0]
+                    
+                    budget_data.append({
+                        'category': budget['category'],
+                        'total': budget['amount'],
+                        'spent': spent,
+                        'remaining': budget['amount'] - spent,
+                        'percentage': (spent / budget['amount'] * 100) if budget['amount'] > 0 else 0
+                    })
+                except Exception as e:
+                    logger.error(f"Error processing budget {budget['category']}: {str(e)}")
+                    continue
+        except Exception as e:
+            logger.error(f"Error fetching budgets: {str(e)}")
+            budget_data = []
 
         return render_template('index.html',
                              total_income=format_currency(total_income),
@@ -169,9 +245,15 @@ def index():
                              savings_target=format_currency(savings_target),
                              recent_expenses=[(e, format_currency(e['amount'])) for e in recent_expenses],
                              recent_investments=[(i, format_currency(i['amount'])) for i in recent_investments],
+                             budget_data=budget_data,
                              has_income=income is not None)
+    except Exception as e:
+        logger.error(f"Error in dashboard route: {str(e)}")
+        flash("An error occurred while loading the dashboard.", "error")
+        return render_template('error.html', error="Failed to load dashboard"), 500
     finally:
-        db.close()
+        if db:
+            db.close()
 
 @app.route('/set_income', methods=['GET', 'POST'])
 @handle_database_error
@@ -191,7 +273,7 @@ def set_income():
                       (amount, datetime.utcnow()))
             db.commit()
             flash("Income set successfully", "success")
-            return redirect(url_for('index'))
+            return redirect(url_for('dashboard'))
         finally:
             db.close()
     
@@ -225,7 +307,7 @@ def set_budget():
                       (amount, category, datetime.utcnow()))
             db.commit()
             flash("Budget set successfully", "success")
-            return redirect(url_for('index'))
+            return redirect(url_for('dashboard'))
         finally:
             db.close()
     
@@ -264,7 +346,7 @@ def set_savings_goal():
                       (amount, target_date, datetime.utcnow()))
             db.commit()
             flash("Savings goal set successfully", "success")
-            return redirect(url_for('index'))
+            return redirect(url_for('dashboard'))
         finally:
             db.close()
     
@@ -316,7 +398,7 @@ def add_expense():
             ''', (amount, category, description, datetime.utcnow()))
             db.commit()
             flash("Expense added successfully", "success")
-            return redirect(url_for('index'))
+            return redirect(url_for('dashboard'))
         finally:
             db.close()
     
@@ -359,7 +441,7 @@ def add_investment():
                       (amount, type, datetime.utcnow()))
             db.commit()
             flash("Investment added successfully", "success")
-            return redirect(url_for('index'))
+            return redirect(url_for('dashboard'))
         finally:
             db.close()
     
@@ -423,22 +505,30 @@ def internal_error(error):
 @app.errorhandler(ValidationError)
 def validation_error(error):
     flash(str(error), "error")
-    return redirect(url_for('index'))
+    return redirect(url_for('dashboard'))
 
 @app.errorhandler(InsufficientFundsError)
 def insufficient_funds_error(error):
     flash(str(error), "error")
-    return redirect(url_for('index'))
+    return redirect(url_for('dashboard'))
 
 @app.errorhandler(DateValidationError)
 def date_validation_error(error):
     flash(str(error), "error")
-    return redirect(url_for('index'))
-
+    return redirect(url_for('dashboard'))
 
 if __name__ == '__main__':
+    # Initialize database if it doesn't exist
+    if not os.path.exists(DATABASE):
+        try:
+            init_db()
+            logger.info("Database initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize database: {str(e)}")
+            raise
+
     # Try ports in sequence until one works
-    ports = [8000, 8001, 8002, 8003, 8004, 8005]
+    ports = [3000, 3001, 3002, 3003, 3004, 3005]
     
     for port in ports:
         try:
