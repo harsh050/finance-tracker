@@ -493,6 +493,27 @@ def get_investments():
     finally:
         db.close()
 
+@app.route('/clear_all', methods=['POST'])
+@handle_database_error
+def clear_all():
+    """Clear all financial data from the database."""
+    db = get_db()
+    try:
+        db.execute('DELETE FROM income')
+        db.execute('DELETE FROM expenses')
+        db.execute('DELETE FROM investments')
+        db.execute('DELETE FROM budget')
+        db.execute('DELETE FROM savings_goals')
+        db.commit()
+        flash("All data has been cleared successfully", "success")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error clearing data: {str(e)}")
+        flash("Failed to clear data", "error")
+    finally:
+        db.close()
+    return redirect(url_for('dashboard'))
+
 # Error handlers
 @app.errorhandler(404)
 def not_found_error(error):
